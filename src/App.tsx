@@ -1,4 +1,4 @@
-import React from 'react'
+
 import DicomViewer from './views/DicomViewer'
 import BottomBar from './components/BottomBar'
 
