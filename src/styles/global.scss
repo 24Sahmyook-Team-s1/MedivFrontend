@@ -1,0 +1,25 @@
+@use './variables' as *;
+
+html, body, #root {
+    height: 100%;
+}
+
+body{
+    margin:0;
+    color: $text;
+    background: linear-gradient(180deg, $bg1, $bg2);
+}
+
+.viewer-shell{
+    display: grid;
+    grid-template-rows: 1fr auto;
+    height: 100%;
+    padding: var(--app-padding);
+    gap: 8px;
+}
+
+.viewport {
+    border-radius: 10px;
+    background: #000;
+    overflow: hidden;
+}
