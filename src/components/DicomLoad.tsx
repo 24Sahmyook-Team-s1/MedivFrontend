@@ -4,7 +4,7 @@ export default function DicomLoad() {
   async function handleDownload() {
     try {
       const res = await axios.get(
-        "http://210.94.241.47:8080/dicom/dicom/studies/1/series/1/images/1/stream",
+        "",
         {
           responseType: "blob",
         }
