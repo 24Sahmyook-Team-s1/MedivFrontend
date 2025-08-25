@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { createImageIdsFromFiles } from "../lib/cornerstone";
+import { createImageIdsFromFiles } from "../lib/cornerstone"
 import type { StackViewport } from "@cornerstonejs/core";
 
 interface ApiRef {
