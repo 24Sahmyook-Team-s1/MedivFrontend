@@ -1,12 +1,10 @@
 
-import DicomViewer from './views/DicomViewer'
-import BottomBar from './components/BottomBar'
+import LoginPage from './views/LoginPage'
 
 export default function App() {
   return (
     <div className="viewer-shell">
-      <DicomViewer />
-      <BottomBar />
+      <LoginPage />
     </div>
   )
 }
