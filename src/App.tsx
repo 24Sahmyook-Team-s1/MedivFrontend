@@ -1,10 +1,21 @@
+import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter } from 'react-router-dom';
 
-import LoginPage from './views/LoginPage'
+import Router from './routes';
 
-export default function App() {
+const App: React.FC = () => {
+  const queryClient = new QueryClient();
+
   return (
-    <div className="viewer-shell">
-      <LoginPage />
-    </div>
-  )
-}
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <div className='app'>
+          <Router />
+        </div>
+      </BrowserRouter>
+    </QueryClientProvider>
+  );
+};
+
+export default App;

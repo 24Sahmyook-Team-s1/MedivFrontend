@@ -1,6 +1,8 @@
-import axios, { AxiosError } from "axios";
-import { create } from "zustand";
-import type { AuthStore } from "../types";
+import { create } from 'zustand'
+import { http } from '../lib/http'
+import type { AuthStore } from './types'
+
+const BYPASS = import.meta.env.VITE_BYPASS_AUTH === 'true'
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
   user: null,
@@ -11,93 +13,97 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setUser: (user: any) => set({ user }),
 
-  //Auth Check
   checkAuthStatus: async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/auth/me`, {
-        withCredentials: true,
-      });
-      if (response.status === 200) {
-        set({
-          user: response.data.data,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-        return true;
-      }
-    } catch {
+    if (BYPASS) {
       set({
-        user: null,
-        isAuthenticated: false,
+        user: { id: 'dev', email: 'dev@local' } as any,
+        isAuthenticated: true,
         isLoading: false,
-      });
+        error: null,
+      })
+      return true
     }
-    return false;
+
+    set({ isLoading: true, error: null })
+    try {
+      const res = await http.get('/auth/me')
+      set({
+        user: res.data?.data ?? null,
+        isAuthenticated: true,
+        isLoading: false,
+        error: null,
+      })
+      return true
+    } catch (e: unknown) {
+      // 401이면 토큰 재발급 시도
+      const ok = await get().refreshToken()
+      if (ok) {
+        try {
+          const res2 = await http.get('/auth/me')
+          set({
+            user: res2.data?.data ?? null,
+            isAuthenticated: true,
+            isLoading: false,
+            error: null,
+          })
+          return true
+        } catch {
+          set({ user: null, isAuthenticated: false, isLoading: false })
+          return false
+        }
+      }
+      set({ user: null, isAuthenticated: false, isLoading: false })
+      return false
+    }
   },
 
-  
   refreshToken: async () => {
+    if (BYPASS) return true
     try {
-      const res = await axios.post(
-        `${API_BASE_URL}/auth/reissue`,
-        {},
-        { withCredentials: true }
-      );
-
-      if (res.status === 200) {
-        return true;
-      }
-      return false;
+      const res = await http.post('/auth/reissue', {})
+      return res.status === 200
     } catch {
-      set({ isAuthenticated: false });
-      return false;
+      set({ isAuthenticated: false })
+      return false
     }
   },
 
   LocalLogin: async (email: string, password: string) => {
-    set({ isLoading: true });
+    if (BYPASS) {
+      set({
+        isAuthenticated: true,
+        user: { id: 'dev', email: 'dev@local' } as any,
+        isLoading: false,
+        error: null,
+      })
+      return '로그인 성공(개발 우회)'
+    }
+
+    set({ isLoading: true, error: null })
     try {
-      await axios.post(
-        `${API_BASE_URL}/auth/login`,
-        {
-          email: email,
-          password: password,
-        },
-        {
-          withCredentials: true,
-        }
-      );
-      
-      // 로그인 성공 시 처리
-      await get().checkAuthStatus();
-      return "로그인 성공";
-    } catch (error){
-      set({ isLoading: false });
-      const err = error as AxiosError;
-      if(err?.status === 400){
-          return "비밀번호가 틀립니다."
-      }else if (err?.status === 502) {
-          return "존재하지 않는 이메일 입니다."
-      } else return "로그인 실패";
+      await http.post('/auth/login', { email, password })
+      await get().checkAuthStatus()
+      return '로그인 성공'
+    } catch (error: any) {
+      set({ isLoading: false })
+      const status = error?.response?.status
+      if (status === 400) return '비밀번호가 틀립니다.'
+      if (status === 502) return '존재하지 않는 이메일 입니다.'
+      return '로그인 실패'
     }
   },
 
-
-  //로그아웃 => 세션 삭제 && JWT 토큰 무효화 요청
   logout: async () => {
+    if (BYPASS) {
+      set({ user: null, isAuthenticated: false })
+      return true
+    }
     try {
-      await axios.post(
-        `${API_BASE_URL}/auth/logout`,
-        {},
-        {
-          withCredentials: true,
-        }
-      );
-      set({ user: null, isAuthenticated: false });
-      return true;
+      await http.post('/auth/logout', {})
+      set({ user: null, isAuthenticated: false })
+      return true
     } catch {
-      return false;
+      return false
     }
   },
-
-}));
+}))

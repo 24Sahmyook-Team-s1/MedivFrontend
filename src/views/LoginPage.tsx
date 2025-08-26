@@ -24,13 +24,11 @@ const LogoArea = styled.div`
   align-items: center;
   justify-content: center;
 
-  img{
+  img {
     width: 300px;
     height: auto;
   }
 `;
-
-
 
 export default function LoginPage() {
   return (
