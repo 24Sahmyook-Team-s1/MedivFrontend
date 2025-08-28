@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
 import CustomInput from "../components/Common/InputArea";
 import { Button } from "../components/Common/SubmitButton";
+import { useAuthStore } from "../stores/useAuth";
+import { useState } from "react";
 
 const Wrapper = styled.div`
   display: grid;
@@ -31,15 +33,18 @@ const LogoArea = styled.div`
 `;
 
 export default function LoginPage() {
+  const {LocalLogin} = useAuthStore();
+  const [id,setId] = useState("");
+  const [password, setPassword] = useState("");
   return (
     <>
       <Wrapper>
         <LogoArea>
           <img src="/Logo.svg" />
         </LogoArea>
-        <CustomInput inputName={"ID"} inputType="text" />
-        <CustomInput inputName={"Password"} inputType="password" />
-        <Button>로그인</Button>
+        <CustomInput inputName={"ID"} inputType="text" onChange={(e) => setId(e.target.value)}/>
+        <CustomInput inputName={"Password"} inputType="password" onChange={(e) => setPassword(e.target.value)}/>
+        <Button onClick={() => LocalLogin(id, password)}>로그인</Button>
       </Wrapper>
     </>
   );

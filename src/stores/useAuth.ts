@@ -4,69 +4,13 @@ import type { AuthStore } from './types'
 
 const BYPASS = import.meta.env.VITE_BYPASS_AUTH === 'true'
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
+export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   isLoading: false,
   error: null,
   isAuthenticated: false,
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
   setUser: (user: any) => set({ user }),
-
-  checkAuthStatus: async () => {
-    if (BYPASS) {
-      set({
-        user: { id: 'dev', email: 'dev@local' } as any,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      })
-      return true
-    }
-
-    set({ isLoading: true, error: null })
-    try {
-      const res = await http.get('/auth/me')
-      set({
-        user: res.data?.data ?? null,
-        isAuthenticated: true,
-        isLoading: false,
-        error: null,
-      })
-      return true
-    } catch (e: unknown) {
-      // 401이면 토큰 재발급 시도
-      const ok = await get().refreshToken()
-      if (ok) {
-        try {
-          const res2 = await http.get('/auth/me')
-          set({
-            user: res2.data?.data ?? null,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null,
-          })
-          return true
-        } catch {
-          set({ user: null, isAuthenticated: false, isLoading: false })
-          return false
-        }
-      }
-      set({ user: null, isAuthenticated: false, isLoading: false })
-      return false
-    }
-  },
-
-  refreshToken: async () => {
-    if (BYPASS) return true
-    try {
-      const res = await http.post('/auth/reissue', {})
-      return res.status === 200
-    } catch {
-      set({ isAuthenticated: false })
-      return false
-    }
-  },
 
   LocalLogin: async (email: string, password: string) => {
     if (BYPASS) {
@@ -81,8 +25,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
     set({ isLoading: true, error: null })
     try {
-      await http.post('/auth/login', { email, password })
-      await get().checkAuthStatus()
+      await http.post('/users/login', { email, password })
+      set({
+        isAuthenticated: true,
+      })
       return '로그인 성공'
     } catch (error: any) {
       set({ isLoading: false })
@@ -99,7 +45,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       return true
     }
     try {
-      await http.post('/auth/logout', {})
+      await http.post('/users/logout', {})
       set({ user: null, isAuthenticated: false })
       return true
     } catch {

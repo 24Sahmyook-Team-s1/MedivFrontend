@@ -22,16 +22,14 @@ export const InputArea = styled.div`
 
 export const InputAreaText = styled.span`
   font-size: 10px;
-  color: black;
 `;
 
 export const InputAreaField = styled.input`
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  background-color: white;
+  background-color: transparent;
   border: none;
-  color: black;
   font-size: 16px;
 `;
 

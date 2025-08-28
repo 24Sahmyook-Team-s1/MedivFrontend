@@ -1,4 +1,3 @@
-// src/views/DicomLoad.tsx
 import axios from "axios";
 import { useCornerstone } from "../stores/useCornerstone";
 
@@ -16,9 +15,8 @@ export default function DicomLoad() {
         (res.headers?.["content-type"] as string) || "application/dicom";
       const filename = getFilenameFromHeaders(res.headers) || "inline.dcm";
 
-      // Blob → File 로 감싸서 바로 로드
       const file = new File([res.data], filename, { type: contentType });
-      await loadFiles([file]);
+      await loadFiles([file]); // Zustand 배열에 push
     } catch (e) {
       console.error(e);
     }
