@@ -28,8 +28,8 @@ export const useStudyStore = create<StudyStore>((set) => ({
   getSeriesList: async (patientId: string) => {
     try {
       const res = await http.get("/dicom/studies", { params: { patientId } });
-      set((state) => ({
-        StudyList: [...state.StudyList, res.data],
+      set(() => ({
+        StudyList: [res.data],
       }));
 
       console.log(res);

@@ -6,11 +6,6 @@ import {
   Search,
   Settings,
   LogOut,
-  FileSearch,
-  Images,
-  History,
-  ClipboardList,
-  ShieldCheck,
   ChevronDown,
 } from "lucide-react";
 import CustomInput from "./Common/InputArea";
@@ -25,6 +20,7 @@ const Container = styled.div`
   height: 100vh;
   background: #121212;
   color: #f5f5f5;
+  min-width: 99vw;
 `;
 
 const Sidebar = styled.aside`
@@ -237,13 +233,6 @@ const handleStudyClick = async (studyInsUid: string) => { await getDicomImage(st
         >
           P+
         </div>
-        {[FileSearch, Search, Images, History, ClipboardList, ShieldCheck].map(
-          (Ic, i) => (
-            <SidebarBtn key={i} title="menu">
-              <Ic size={18} />
-            </SidebarBtn>
-          )
-        )}
         <div style={{ marginTop: "auto" }} />
         <SidebarBtn title="설정">
           <Settings size={18} />

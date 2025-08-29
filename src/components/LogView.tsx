@@ -64,23 +64,20 @@ const Table = styled.table`
 `
 
 export default function LogsView(){
-  const { logs, total, isLoadingLogs, lastQuery, fetchLogs } = useAdminStore()
-  const [keyword, setKeyword] = React.useState(lastQuery.keyword || '')
-  const [level, setLevel] = React.useState<LogLevel | 'ALL'>(lastQuery.level || 'ALL')
-  const [dateFrom, setDateFrom] = React.useState<string>(lastQuery.dateFrom || '')
-  const [dateTo, setDateTo] = React.useState<string>(lastQuery.dateTo || '')
+  const { logs, totalLogs, isLoadingLogs, fetchLogs } = useAdminStore()
+  const [keyword, setKeyword] = React.useState('')
+  const [level, setLevel] = React.useState<LogLevel | 'ALL'>('ALL')
+  const [dateFrom, setDateFrom] = React.useState('')
+  const [dateTo, setDateTo] = React.useState('')
 
   React.useEffect(() => { fetchLogs({ page: 1 }) }, [])
-
   const onSearch = () => fetchLogs({ page: 1, keyword, level, dateFrom, dateTo })
 
   return (
     <Card>
       <Row>
-        <div>총 {total}건</div>
-        <div>
-          <Btn onClick={() => fetchLogs()} disabled={isLoadingLogs}>새로고침</Btn>
-        </div>
+        <div>총 {totalLogs}건</div>
+        <div><Btn onClick={() => fetchLogs()} disabled={isLoadingLogs}>새로고침</Btn></div>
       </Row>
 
       <Controls>

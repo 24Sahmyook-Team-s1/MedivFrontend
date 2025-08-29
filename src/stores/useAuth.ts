@@ -16,10 +16,11 @@ export const useAuthStore = create<AuthStore>((set) => ({
     if (BYPASS) {
       set({
         isAuthenticated: true,
-        user: { id: 'dev', email: 'dev@local' } as any,
+        user: { id: 'dev', email: 'dev@local', role: 'ADMIN'} as any,
         isLoading: false,
         error: null,
       })
+      console.log('데브 우회')
       return '로그인 성공(개발 우회)'
     }
 
@@ -31,8 +32,6 @@ export const useAuthStore = create<AuthStore>((set) => ({
         isAuthenticated: true,
         user: resinfo.data
       })
-      
-      console.log(resinfo.data);
       return '로그인 성공'
     } catch (error: any) {
       set({ isLoading: false })
@@ -49,8 +48,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
       return true
     }
     try {
-      await http.post('/users/logout', {})
+      await http.post('/users/logout')
       set({ user: null, isAuthenticated: false })
+      window.location.reload();
       return true
     } catch {
       return false

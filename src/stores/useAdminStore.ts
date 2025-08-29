@@ -1,101 +1,151 @@
-import { create } from 'zustand'
-import { http } from '../lib/http'
+import { create } from "zustand";
+import { http } from "../lib/http";
 
-export type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'DEBUG'
+export type LogLevel = "INFO" | "WARN" | "ERROR" | "DEBUG";
 
 export type AdminLog = {
-  id: string
-  time: string // ISO string
-  level: LogLevel
-  actor?: string
-  ip?: string
-  message: string
-  meta?: Record<string, any>
-}
+  id: string;
+  time: string; // ISO string
+  level: LogLevel;
+  actor?: string;
+  ip?: string;
+  message: string;
+  meta?: Record<string, any>;
+};
 
-export type LogQuery = {
-  page?: number
-  size?: number
-  level?: LogLevel | 'ALL'
-  keyword?: string
-  dateFrom?: string // ISO date (yyyy-mm-dd)
-  dateTo?: string   // ISO date (yyyy-mm-dd)
-}
+export type UserRole = "ADMIN" | "STAFF";
+export type UserStatus = "ACTIVE" | "DISABLED";
 
-type IssueForm = {
-  displayName: string
-  email: string
-  role: 'ADMIN' | 'RAD' | 'TECH' | 'STAFF'
-  passWord?: string
-  status: string
-  dept: string
-}
+export type AdminUser = {
+  id: string;
+  displayName: string;
+  email: string;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: string;
+};
 
 type AdminState = {
   // logs
-  logs: AdminLog[]
-  total: number
-  isLoadingLogs: boolean
-  lastQuery: LogQuery
-  fetchLogs: (q?: Partial<LogQuery>) => Promise<void>
+  logs: AdminLog[];
+  totalLogs: number;
+  isLoadingLogs: boolean;
+  fetchLogs: (params?: {
+    level?: LogLevel | "ALL";
+    keyword?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    size?: number;
+  }) => Promise<void>;
 
   // issue id
-  isIssuing: boolean
-  issueResult: { email: string, issuedAt: string } | null
-  issueId: (form: IssueForm) => Promise<void>
-}
+  isIssuing: boolean;
+  issueResult: { userId: string; issuedAt: string } | null;
+  issueId: (form: {
+    userId: string;
+    name: string;
+    email: string;
+    role: UserRole;
+    tempPassword?: string;
+  }) => Promise<void>;
 
+  // users
+  users: AdminUser[];
+  usersTotal: number;
+  isLoadingUsers: boolean;
+  fetchUsers: (params?: {
+    keyword?: string;
+    role?: UserRole | "ALL";
+    status?: UserStatus | "ALL";
+    page?: number;
+    size?: number;
+  }) => Promise<void>;
+  updateUserRole: (userId: string, role: UserRole) => Promise<void>;
+  toggleUserActive: (userId: string, next: UserStatus) => Promise<void>;
+  resetPassword: (userId: string) => Promise<{ tempPassword: string } | null>;
+};
 export const useAdminStore = create<AdminState>((set, get) => ({
+  // logs
   logs: [],
-  total: 0,
+  totalLogs: 0,
   isLoadingLogs: false,
-  lastQuery: { page: 1, size: 20, level: 'ALL' },
-
-  async fetchLogs(q) {
-    const prev = get().lastQuery
-    const query: LogQuery = { ...prev, ...q }
-    set({ isLoadingLogs: true, lastQuery: query })
+  async fetchLogs(params) {
+    set({ isLoadingLogs: true })
     try {
-      // 백엔드 예시 엔드포인트: GET /admin/logs
-      // params: page, size, level, keyword, dateFrom, dateTo
-      const res = await http.get('/admin/logs', { params: query })
+      const res = await http.get('/admin/logs', { params })
       const { items, total } = res.data || { items: [], total: 0 }
-      set({ logs: items, total })
+      set({ logs: items, totalLogs: total })
     } catch (e) {
       console.error('[fetchLogs] failed', e)
-      // 안전장치: 목 데이터
-      const now = new Date().toISOString()
-      const mock: AdminLog[] = Array.from({ length: 8 }).map((_, i) => ({
-        id: 'mock-' + i,
-        time: now,
-        level: (['INFO','WARN','ERROR','DEBUG'] as LogLevel[])[i % 4],
-        actor: 'system',
-        ip: '127.0.0.1',
-        message: `mock log message ${i}`,
-      }))
-      set({ logs: mock, total: mock.length })
     } finally {
       set({ isLoadingLogs: false })
     }
   },
 
+  // issue id
   isIssuing: false,
   issueResult: null,
   async issueId(form) {
     set({ isIssuing: true, issueResult: null })
     try {
-      // 백엔드 예시 엔드포인트: POST /admin/users
-      // body: { userId, name, email, role, tempPassword }
-      const res = await http.post('/users', form)
-      const data = res.data || { email: form.email, displayName: form.displayName, dept: 'Doc', role: form.role, status: 'ACTIVE', passWord: form.passWord}
+      const res = await http.post('/admin/users', form)
+      const data = res.data || { userId: form.userId, issuedAt: new Date().toISOString() }
       set({ issueResult: data })
     } catch (e) {
       console.error('[issueId] failed', e)
-      // 최소 성공 시나리오 모킹
-      set({ issueResult: {email: form.email, issuedAt: new Date().toISOString() } })
     } finally {
       set({ isIssuing: false })
     }
   },
-}))
 
+  // users
+  users: [],
+  usersTotal: 0,
+  isLoadingUsers: false,
+  async fetchUsers() {
+    set({ isLoadingUsers: true })
+    try {
+      const res = await http.get('/users')
+      const items = res.data.content
+      set({ users: items })
+      console.log(useAdminStore.getState().users);
+    } catch (e) {
+      console.error('[fetchUsers] failed', e)
+    } finally {
+      set({ isLoadingUsers: false })
+    }
+  },
+
+  async updateUserRole(id, role) {
+    const prev = get().users
+    set({ users: prev.map(u => u.id === id ? { ...u, role } : u) }) // optimistic
+    try {
+      await http.patch(`/admin/users/${encodeURIComponent(id)}`, { role })
+    } catch (e) {
+      console.error('[updateUserRole] failed', e)
+      set({ users: prev }) // rollback
+    }
+  },
+
+  async toggleUserActive(id, next) {
+    const prev = get().users
+    set({ users: prev.map(u => u.id === id ? { ...u, status: next } : u) }) // optimistic
+    try {
+      await http.patch(`/admin/users/${encodeURIComponent(id)}`, { status: next })
+    } catch (e) {
+      console.error('[toggleUserActive] failed', e)
+      set({ users: prev }) // rollback
+    }
+  },
+
+  async resetPassword(userId) {
+    try {
+      const res = await http.post(`/admin/users/${encodeURIComponent(userId)}/reset-password`)
+      return res.data || null // { tempPassword }
+    } catch (e) {
+      console.error('[resetPassword] failed', e)
+      return null
+    }
+  },
+}))

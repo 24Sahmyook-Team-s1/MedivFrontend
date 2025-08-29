@@ -6,7 +6,7 @@ import { useAuthStore } from "../stores/useAuth";
 const ADMIN_HOME = "/adcon";    // RouteList/Router와 동일하게!
 const STAFF_HOME = "/Studies";
 
-const ADMIN_ALLOW = [ADMIN_HOME, "/studies", "/viewer"]; // admin은 다 허용
+const ADMIN_ALLOW = [ADMIN_HOME]; // admin은 다 허용
 const STAFF_ALLOW = [STAFF_HOME.toLowerCase(), "/viewer"]; // staff는 studies, viewer만
 
 export default function ProtectedRoute() {
