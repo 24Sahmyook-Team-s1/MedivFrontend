@@ -26,9 +26,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
     set({ isLoading: true, error: null })
     try {
       await http.post('/users/login', { email, password })
+      const resinfo = await http.get(`/users/${email}`)
       set({
         isAuthenticated: true,
+        user: resinfo.data
       })
+      
+      console.log(resinfo.data);
       return '로그인 성공'
     } catch (error: any) {
       set({ isLoading: false })

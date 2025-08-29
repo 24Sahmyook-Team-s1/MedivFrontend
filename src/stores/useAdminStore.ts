@@ -23,12 +23,12 @@ export type LogQuery = {
 }
 
 type IssueForm = {
-  userId: string
   displayName: string
   email: string
   role: 'ADMIN' | 'RAD' | 'TECH' | 'STAFF'
   passWord?: string
   status: string
+  dept: string
 }
 
 type AdminState = {
@@ -41,7 +41,7 @@ type AdminState = {
 
   // issue id
   isIssuing: boolean
-  issueResult: { userId: string; issuedAt: string } | null
+  issueResult: { email: string, issuedAt: string } | null
   issueId: (form: IssueForm) => Promise<void>
 }
 
@@ -92,7 +92,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     } catch (e) {
       console.error('[issueId] failed', e)
       // 최소 성공 시나리오 모킹
-      set({ issueResult: { userId: form.userId, issuedAt: new Date().toISOString() } })
+      set({ issueResult: {email: form.email, issuedAt: new Date().toISOString() } })
     } finally {
       set({ isIssuing: false })
     }

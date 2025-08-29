@@ -26,7 +26,7 @@ const RouteList: RouteItem[] = [
         guard: 'protected',
     },
     {
-        path: '/',
+        path: '/login',
         name: 'login',
         component: LoginPage,
         guard: 'publicOnly',
