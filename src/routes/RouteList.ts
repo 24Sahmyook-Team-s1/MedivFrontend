@@ -1,3 +1,4 @@
+import AdminPage from "../views/AdminPage";
 import DicomViewer from "../views/DicomViewer";
 import LoginPage from "../views/LoginPage";
 import StudyView from "../views/StudyView";
@@ -29,6 +30,12 @@ const RouteList: RouteItem[] = [
         name: 'login',
         component: LoginPage,
         guard: 'publicOnly',
+    },
+    {
+        path: '/adcon',
+        name: 'admin',
+        component: AdminPage,
+        guard: 'protected'
     }
 ];
 
