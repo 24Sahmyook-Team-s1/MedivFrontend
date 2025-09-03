@@ -7,7 +7,7 @@ interface StudyStore {
   seriesKey: number | null;
   imageKey: number | null;
   studyInsUid: string | null;
-  seriesInsUid: string | null;
+  seriesInsUids: string[] | null;
   StudyList: any[];
   getSeriesList: (patientId: string) => Promise<void>;
   getDicomImage: (
@@ -21,7 +21,7 @@ export const useStudyStore = create<StudyStore>((set) => ({
   seriesKey: null,
   imageKey: null,
   studyInsUid: null,
-  seriesInsUid: null,
+  seriesInsUids: null,
 
   StudyList: [],
 
@@ -39,36 +39,57 @@ export const useStudyStore = create<StudyStore>((set) => ({
     }
   },
 
-  getDicomImage: async (studyInsUid: string, navigate?) => {
-    try {
-      const studyRes = await http.get(`/dicom/studies/${studyInsUid}`);
-      const seriesInsUid = studyRes.data.seriesInsUid;
+getDicomImage: async (studyInsUid: string, navigate?) => {
+  try {
+    const studyRes = await http.get(`/dicom/studies/${studyInsUid}`);
+    const seriesInsUid = studyRes.data.map((item: { seriesInsUid: string; }) => item.seriesInsUid);
 
-      const imageRes = await http.get(`/dicom/series/${seriesInsUid}/images`);
+    const imageRes: any[] = [];
 
-      const files = await Promise.all(
-        imageRes.data.map(async (imageInfo: any, idx: number) => {
+    for (let i = 0; i < seriesInsUid.length; i++){
+      imageRes[i] = await http.get(`/dicom/series/${seriesInsUid[i]}/images`)
+    }
+
+    // 시리즈별로 파일을 저장할 이차원 배열
+    const filesBySeries: File[][] = [];
+
+    for (let seriesIdx = 0; seriesIdx < imageRes.length; seriesIdx++) {
+      const imagesInSeries = imageRes[seriesIdx].data;
+      
+      // 현재 시리즈의 파일들을 저장할 배열
+      const seriesFiles = await Promise.all(
+        imagesInSeries.map(async (imageInfo: any, imageIdx: number) => {
           const { imageKey, studyKey, seriesKey } = imageInfo;
 
-          // 같은 http 인스턴스를 쓰는 게 CORS/쿠키 일관성에 유리합니다.
           const { data: blob } = await http.get(
             `/dicom/studies/${studyKey}/series/${seriesKey}/images/${imageKey}/stream`,
             { responseType: "blob" }
           );
 
-          // Cornerstone의 fileManager는 File 객체 사용이 안전합니다(Blob도 되지만 name/type이 없는 경우가 있어요).
-          return new File([blob], `img_${idx}.dcm`, {
+          return new File([blob], `series_${seriesIdx}_img_${imageIdx}.dcm`, {
             type: blob.type || "application/dicom",
           });
         })
       );
 
-      // 뷰어로 이동하면서 payload를 함께 전달
-      if (navigate) {
-        navigate("/viewer", { state: { dicomFiles: files } });
-      }
-    } catch (error: any) {
-      console.log(error);
+      // 시리즈별로 저장
+      filesBySeries[seriesIdx] = seriesFiles;
     }
-  },
+
+    // 모든 파일을 하나의 배열로 합치기 (기존 방식 유지)
+    const allFiles = filesBySeries.flat();
+
+    // 뷰어로 이동하면서 payload를 함께 전달
+    if (navigate) {
+      navigate("/viewer", { 
+        state: { 
+          dicomFiles: allFiles,
+          filesBySeries: filesBySeries // 시리즈별 구분된 파일도 함께 전달
+        } 
+      });
+    }
+  } catch (error: any) {
+    console.log(error);
+  }
+},
 }));
