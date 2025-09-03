@@ -19,4 +19,13 @@ export default defineConfig({
   },
   // (polyseg/labelmap 등 WASM 쓸 땐 추가)
   // assetsInclude: ['**/*.wasm'],
+  server: {
+    proxy: {
+      '/api':{
+        target: 'http://210.94.241.47:8080',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  }
 })

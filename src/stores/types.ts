@@ -8,5 +8,5 @@ export interface AuthStore {
   setUser: (user: any) => void;
   logout: () => Promise<boolean>;
   LocalLogin: (email: string, password: string) => Promise<string>;
-
+  Authorization: () => Promise<boolean>;
 }

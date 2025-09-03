@@ -42,7 +42,7 @@ type Actions = {
   loadFiles: (files: (File | Blob)[]) => Promise<void>;
   loadSeries: (seriesId: string) => Promise<void>;
   switchMode: (mode: ViewportMode, element: HTMLDivElement) => Promise<void>;
-
+loadStack: (imageIds: string[]) => Promise<void>;
   // 준비 대기
   whenReady: () => Promise<void>;
 };
@@ -207,4 +207,18 @@ export const useCornerstone = create<State & Actions>((set, get) => ({
       if (get().isReady) return resolve();
       _readyResolvers.push(resolve);
     }),
+
+      loadStack: async (imageIds) => {
+    const { api } = get();
+    if (!api || !imageIds?.length) return;
+
+    await loadIntoViewport(
+      api.renderingEngine,
+      api.viewportId,
+      api.mode,        // loadIntoViewport가 mode별로 알아서 처리하도록 유지
+      imageIds
+    );
+
+    set({ lastImageIds: imageIds }); // 전환/재마운트 때 재사용
+  },
 }));

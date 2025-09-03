@@ -4,7 +4,7 @@ import type { AuthStore } from './types'
 
 const BYPASS = import.meta.env.VITE_BYPASS_AUTH === 'true'
 
-export const useAuthStore = create<AuthStore>((set) => ({
+export const useAuthStore = create<AuthStore>((set, get) => ({
   user: null,
   isLoading: false,
   error: null,
@@ -56,4 +56,16 @@ export const useAuthStore = create<AuthStore>((set) => ({
       return false
     }
   },
+
+  Authorization: async () => {
+    const {isAuthenticated} = get();
+    if(isAuthenticated) return true;
+    try{
+      const res = await http.get('/users/me')
+      set ({user: res.data, isAuthenticated: true})
+      return true
+    } catch {
+      return false
+    }
+  }
 }))

@@ -74,7 +74,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   async fetchLogs(params) {
     set({ isLoadingLogs: true })
     try {
-      const res = await http.get('/admin/logs', { params })
+      const res = await http.get('/logs', { params })
       const { items, total } = res.data || { items: [], total: 0 }
       set({ logs: items, totalLogs: total })
     } catch (e) {
@@ -90,7 +90,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   async issueId(form) {
     set({ isIssuing: true, issueResult: null })
     try {
-      const res = await http.post('/admin/users', form)
+      const res = await http.post('/users', form)
       const data = res.data || { userId: form.userId, issuedAt: new Date().toISOString() }
       set({ issueResult: data })
     } catch (e) {
