@@ -14,7 +14,7 @@ export type AdminLog = {
 };
 
 export type UserRole = "ADMIN" | "STAFF";
-export type UserStatus = "ACTIVE" | "DISABLED";
+export type UserStatus = "ACTIVE" | "INACTIVE";
 
 export type AdminUser = {
   id: string;
@@ -61,10 +61,11 @@ type AdminState = {
     page?: number;
     size?: number;
   }) => Promise<void>;
-  updateUserRole: (userId: string, role: UserRole) => Promise<void>;
+  updateUser: (userId: string, role: UserRole, displayName: string, dept: string, status:UserStatus ) => Promise<void>;
   toggleUserActive: (userId: string, next: UserStatus) => Promise<void>;
   resetPassword: (userId: string) => Promise<{ tempPassword: string } | null>;
 };
+
 export const useAdminStore = create<AdminState>((set, get) => ({
   // logs
   logs: [],
@@ -117,13 +118,13 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     }
   },
 
-  async updateUserRole(id, role) {
+  async updateUser(id, role, displayName, dept, status) {
     const prev = get().users
     set({ users: prev.map(u => u.id === id ? { ...u, role } : u) }) // optimistic
     try {
-      await http.patch(`/admin/users/${encodeURIComponent(id)}`, { role })
+      await http.put(`/users/${encodeURIComponent(id)}`, { displayName, dept, role, status })
     } catch (e) {
-      console.error('[updateUserRole] failed', e)
+      console.error('[updateUser] failed', e)
       set({ users: prev }) // rollback
     }
   },
@@ -132,7 +133,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     const prev = get().users
     set({ users: prev.map(u => u.id === id ? { ...u, status: next } : u) }) // optimistic
     try {
-      await http.patch(`/admin/users/${encodeURIComponent(id)}`, { status: next })
+      await http.patch(`/users/${encodeURIComponent(id)}`, { status: next })
     } catch (e) {
       console.error('[toggleUserActive] failed', e)
       set({ users: prev }) // rollback
@@ -141,7 +142,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
   async resetPassword(userId) {
     try {
-      const res = await http.post(`/admin/users/${encodeURIComponent(userId)}/reset-password`)
+      const res = await http.post(`/users/${encodeURIComponent(userId)}/reset-password`)
       return res.data || null // { tempPassword }
     } catch (e) {
       console.error('[resetPassword] failed', e)

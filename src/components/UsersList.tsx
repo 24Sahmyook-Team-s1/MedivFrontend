@@ -57,7 +57,7 @@ const Table = styled.table`
 `
 
 export default function UsersView(){
-  const { users, usersTotal, isLoadingUsers, fetchUsers, updateUserRole, toggleUserActive, resetPassword } = useAdminStore()
+  const { users, usersTotal, isLoadingUsers, fetchUsers, updateUser, resetPassword } = useAdminStore()
   const [keyword, setKeyword] = React.useState('')
   const [role, setRole] = React.useState<UserRole | 'ALL'>('ALL')
   const [status, setStatus] = React.useState<UserStatus | 'ALL'>('ALL')
@@ -65,8 +65,8 @@ export default function UsersView(){
   React.useEffect(() => { fetchUsers({ page: 1, size: 20 }) }, [])
   const onSearch = () => fetchUsers({ page: 1, size: 20, keyword, role, status })
 
-  const onRoleChange = (userId: string, next: UserRole) => updateUserRole(userId, next)
-  const onToggle = (userId: string, cur: UserStatus) => toggleUserActive(userId, cur === 'ACTIVE' ? 'DISABLED' : 'ACTIVE')
+  const onRoleChange = (userId: string, next: UserRole, displayName: string, dept: string, status: UserStatus) => updateUser(userId, next, displayName, dept, status)
+  const onToggle = (userId: string, userRole: UserRole, displayName: string, dept: string, cur: UserStatus) => updateUser(userId, userRole, displayName, dept, cur === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE')
   const onReset = async (userId: string) => {
     const res = await resetPassword(userId)
     if(res?.tempPassword){
@@ -112,16 +112,16 @@ export default function UsersView(){
           <tbody>
             {users.map(u => (
               <tr key={u.id}>
-                <td>{u.displayName}</td>
                 <td>{u.email}</td>
+                <td>{u.displayName}</td>
                 <td>
-                  <Select value={u.role} onChange={(e)=>onRoleChange(u.id, e.target.value as UserRole)}>
+                  <Select value={u.role} onChange={(e)=>onRoleChange(u.id, e.target.value as UserRole, u.displayName, "null", u.status)}>
                     <option value="ADMIN">ADMIN</option>
                     <option value="STAFF">STAFF</option>
                   </Select>
                 </td>
                 <td>
-                  <Btn onClick={()=>onToggle(u.id, u.status)}>{u.status === 'ACTIVE' ? 'ACITVE' : 'DEACTIVE'}</Btn>
+                  <Btn onClick={()=>onToggle(u.id,u.role, u.displayName, "null" ,u.status)}>{u.status === 'ACTIVE' ? 'ACITVE' : 'INACTIVE'}</Btn>
                 </td>
                 <td><code>{new Date(u.createdAt).toLocaleString()}</code></td>
                 <td style={{display:'flex', gap:8}}>
