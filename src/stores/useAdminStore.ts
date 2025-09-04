@@ -41,13 +41,14 @@ type AdminState = {
 
   // issue id
   isIssuing: boolean;
-  issueResult: { userId: string; issuedAt: string } | null;
+  issueResult: { email: string; issuedAt: string } | null;
   issueId: (form: {
-    userId: string;
     name: string;
     email: string;
     role: UserRole;
     tempPassword?: string;
+    status: string;
+    dept: string;
   }) => Promise<void>;
 
   // users
@@ -91,7 +92,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     set({ isIssuing: true, issueResult: null })
     try {
       const res = await http.post('/users', form)
-      const data = res.data || { userId: form.userId, issuedAt: new Date().toISOString() }
+      const data = res.data || { email: form.email, issuedAt: new Date().toISOString() }
       set({ issueResult: data })
     } catch (e) {
       console.error('[issueId] failed', e)

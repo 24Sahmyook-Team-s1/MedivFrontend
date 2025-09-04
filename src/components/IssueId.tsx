@@ -37,7 +37,7 @@ export default function IssueIdView(){
   const [displayName, setDisplayName] = React.useState('')
   const [email, setEmail] = React.useState('')
   const [dept, setDept] = React.useState('')
-  const [role, setRole] = React.useState<'ADMIN'|'RAD'|'TECH'|'STAFF'>('STAFF')
+  const [role, setRole] = React.useState<'ADMIN'|'STAFF'>('STAFF')
   const [passWord, setPassWord] = React.useState(genTempPassword())
   const status = 'ACTIVE';
 
@@ -46,7 +46,9 @@ export default function IssueIdView(){
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if(!valid) return
-    await issueId({ displayName, email, role, passWord, status , dept})
+    await issueId({
+      email, name: displayName, role, tempPassword: passWord, status, dept
+    })
   }
 
   return (
