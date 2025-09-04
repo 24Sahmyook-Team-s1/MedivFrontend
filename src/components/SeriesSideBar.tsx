@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import styled from "@emotion/styled";
 import { useStudyStore } from "../stores/useStudyStore";
-import { useCornerstone } from "../stores/useCornerstone";
+import { ensureCornerstoneReady } from "../lib/cornerstone";
 import { fetchInstanceUrls } from "../api/dicom";
 import { imageIdToThumbDataURL } from "../lib/thumb";
 import { createImageIdsFromFiles } from "../lib/cornerstone"; // ✅ 프로젝트 유틸 사용 (로컬 파일 → imageIds)
@@ -45,7 +45,6 @@ type Item = {
 
 export default function SeriesSidebar({ onSelect, filesBySeries }: Props) {
   const { StudyList } = useStudyStore();
-  const whenReady = useCornerstone((s) => s.whenReady);
 
   const [active, setActive] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -71,12 +70,12 @@ export default function SeriesSidebar({ onSelect, filesBySeries }: Props) {
     let stop = false;
     (async () => {
       setItems([]);
+      await ensureCornerstoneReady();
       if (isLocalMode) {
         // ===== 로컬 모드: filesBySeries 기반으로 썸네일/카운트 구성 =====
         if (!filesBySeries?.length) return;
         setLoading(true);
         try {
-          await whenReady();
           const next: Item[] = [];
           for (let i = 0; i < filesBySeries.length; i++) {
             const files = filesBySeries[i] ?? [];
@@ -105,7 +104,6 @@ export default function SeriesSidebar({ onSelect, filesBySeries }: Props) {
         if (!serverSeries.length) return;
         setLoading(true);
         try {
-          await whenReady();
           const next: Item[] = [];
           for (const s of serverSeries) {
             try {
@@ -129,7 +127,7 @@ export default function SeriesSidebar({ onSelect, filesBySeries }: Props) {
       }
     })();
     return () => { stop = true; };
-  }, [filesBySeries, serverSeries, isLocalMode, whenReady]);
+  }, [filesBySeries, serverSeries, isLocalMode ]);
 
   const handleClick = async (key: string) => {
     setActive(key);

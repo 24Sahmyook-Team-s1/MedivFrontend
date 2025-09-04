@@ -1,5 +1,11 @@
 // src/lib/cornerstone.ts
-import { init as coreInit, Enums, RenderingEngine, volumeLoader, type Types } from '@cornerstonejs/core';
+import {
+  init as coreInit,
+  Enums,
+  RenderingEngine,
+  volumeLoader,
+  type Types,
+} from "@cornerstonejs/core";
 import {
   init as toolsInit,
   ToolGroupManager,
@@ -10,10 +16,37 @@ import {
   TrackballRotateTool,
   addTool,
   Enums as csToolsEnums,
-} from '@cornerstonejs/tools';
+} from "@cornerstonejs/tools";
 
 // external 설정 불필요 — init만 사용
-import { init as dicomInit, wadouri } from '@cornerstonejs/dicom-image-loader';
+import { init as dicomInit, wadouri } from "@cornerstonejs/dicom-image-loader";
+
+let __ready = false;
+let __readyPromise: Promise<void> | null = null;
+
+/** Cornerstone(core/tools/dicom-loader) 초기화 1회 보장 */
+export async function ensureCornerstoneReady() {
+  if (__ready) return;
+  if (!__readyPromise) {
+    __readyPromise = (async () => {
+      await coreInit();
+      toolsInit();
+      await dicomInit();
+
+      // (필요 시) wadouri 설정 가능
+      // wadouri.configure({ useWebWorkers: true });
+
+      // 툴 등록(전역)
+      addTool(WindowLevelTool);
+      addTool(ZoomTool);
+      addTool(PanTool);
+      addTool(StackScrollTool);
+
+      __ready = true;
+    })();
+  }
+  return __readyPromise;
+}
 
 export async function initCornerstone() {
   await coreInit();
@@ -25,21 +58,25 @@ export async function initCornerstone() {
 }
 
 /** 뷰포트 모드 타입 */
-export type ViewportMode = 'stack' | 'volume' | 'volume3d';
+export type ViewportMode = "stack" | "volume" | "volume3d";
 
 /** 존재하면 재사용, 없으면 생성 */
 function ensureRenderingEngine(renderingEngineId: string) {
   try {
     // 일부 버전에선 getRenderingEngine가 없음 → try/catch
-    const existed = (RenderingEngine as any).getRenderingEngine?.(renderingEngineId);
+    const existed = (RenderingEngine as any).getRenderingEngine?.(
+      renderingEngineId
+    );
     if (existed) return existed;
-  } catch { /* empty */ }
+  } catch {
+    /* empty */
+  }
   return new RenderingEngine(renderingEngineId);
 }
 export function createDefaultToolGroup(
   viewportId: string,
   renderingEngineId: string,
-  mode: 'stack' | 'volume' | 'volume3d' = 'stack'
+  mode: "stack" | "volume" | "volume3d" = "stack"
 ) {
   const groupId = `tg-${mode}`;
   let toolGroup = ToolGroupManager.getToolGroup(groupId);
@@ -47,13 +84,19 @@ export function createDefaultToolGroup(
     toolGroup = ToolGroupManager.createToolGroup(groupId)!;
   }
 
-  const safeAdd = (ToolCtor: any) => { try { addTool(ToolCtor); } catch { /* empty */ } };
+  const safeAdd = (ToolCtor: any) => {
+    try {
+      addTool(ToolCtor);
+    } catch {
+      /* empty */
+    }
+  };
 
   // 공통
   safeAdd(PanTool);
   safeAdd(ZoomTool);
 
-  if (mode !== 'volume3d') {
+  if (mode !== "volume3d") {
     // ✅ MouseWheel 전용 툴이 없는 버전에서는 StackScrollTool을 그대로 쓰고
     //    바인딩을 "Wheel"로 걸어주면 동일하게 동작함
     safeAdd(WindowLevelTool);
@@ -66,7 +109,7 @@ export function createDefaultToolGroup(
   toolGroup.addTool(PanTool.toolName);
   toolGroup.addTool(ZoomTool.toolName);
 
-  if (mode !== 'volume3d') {
+  if (mode !== "volume3d") {
     toolGroup.addTool(WindowLevelTool.toolName);
     toolGroup.addTool(StackScrollTool.toolName);
 
@@ -106,8 +149,8 @@ export function createDefaultToolGroup(
 
 /** Stack 뷰포트 생성 */
 export function createStackViewport(element: HTMLDivElement) {
-  const renderingEngineId = 'cs3d-engine';
-  const viewportId = 'STACK-1';
+  const renderingEngineId = "cs3d-engine";
+  const viewportId = "STACK-1";
   const renderingEngine = ensureRenderingEngine(renderingEngineId);
 
   renderingEngine.enableElement({
@@ -121,8 +164,8 @@ export function createStackViewport(element: HTMLDivElement) {
 
 /** Volume(MPR, ORTHOGRAPHIC) 뷰포트 생성 */
 export function createVolumeViewport(element: HTMLDivElement) {
-  const renderingEngineId = 'cs3d-engine';
-  const viewportId = 'VOL-ORTHO-1';
+  const renderingEngineId = "cs3d-engine";
+  const viewportId = "VOL-ORTHO-1";
   const renderingEngine = ensureRenderingEngine(renderingEngineId);
 
   renderingEngine.enableElement({
@@ -137,8 +180,8 @@ export function createVolumeViewport(element: HTMLDivElement) {
 
 /** Volume3D 뷰포트 생성 */
 export function createVolume3DViewport(element: HTMLDivElement) {
-  const renderingEngineId = 'cs3d-engine';
-  const viewportId = 'VOL-3D-1';
+  const renderingEngineId = "cs3d-engine";
+  const viewportId = "VOL-3D-1";
   const renderingEngine = ensureRenderingEngine(renderingEngineId);
 
   renderingEngine.enableElement({
@@ -154,7 +197,7 @@ export function createVolume3DViewport(element: HTMLDivElement) {
 // File 또는 Blob을 등록 가능 (공식 API: fileManager.add(file: Blob) -> string)
 export function createImageIdsFromFiles(files: (File | Blob)[]): string[] {
   if (!wadouri?.fileManager?.add) {
-    throw new Error('wadouri fileManager가 초기화되지 않았습니다.');
+    throw new Error("wadouri fileManager가 초기화되지 않았습니다.");
   }
   return files.map((f) => wadouri.fileManager.add(f as Blob));
 }
@@ -173,7 +216,7 @@ export async function loadIntoViewport(
     };
   }
 ) {
-  if (mode === 'stack') {
+  if (mode === "stack") {
     const vp = renderingEngine.getViewport(viewportId) as Types.IStackViewport;
     await vp.setStack(imageIds);
     vp.render();
@@ -181,9 +224,12 @@ export async function loadIntoViewport(
   }
 
   const volumeId =
-    opts?.volumeId ?? `cornerstoneStreamingImageVolume:${hashImageIds(imageIds)}`;
+    opts?.volumeId ??
+    `cornerstoneStreamingImageVolume:${hashImageIds(imageIds)}`;
 
-  const volume = await volumeLoader.createAndCacheVolume(volumeId, { imageIds });
+  const volume = await volumeLoader.createAndCacheVolume(volumeId, {
+    imageIds,
+  });
   await volume.load();
 
   const vp = renderingEngine.getViewport(viewportId) as Types.IVolumeViewport;
@@ -191,7 +237,7 @@ export async function loadIntoViewport(
 
   if (opts?.cameraPreset) {
     vp.setCamera(opts.cameraPreset);
-  } else if (mode === 'volume') {
+  } else if (mode === "volume") {
     // 기본 Axial 유사 카메라
     vp.setCamera({
       viewPlaneNormal: [0, 0, -1],
@@ -202,7 +248,7 @@ export async function loadIntoViewport(
 }
 
 function hashImageIds(imageIds: string[]) {
-  const src = imageIds[0] + '::' + imageIds.length;
+  const src = imageIds[0] + "::" + imageIds.length;
   let h = 0;
   for (let i = 0; i < src.length; i++) {
     h = (h << 5) - h + src.charCodeAt(i);
