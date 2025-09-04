@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { http } from "../lib/http";
 import type { NavigateFunction } from "react-router-dom";
+import { useCornerstone } from "./useCornerstone";
 
 interface StudyStore {
   studyKey: number | null;
@@ -41,6 +42,8 @@ export const useStudyStore = create<StudyStore>((set) => ({
 
 getDicomImage: async (studyInsUid: string, navigate?) => {
   try {
+    const cornerstone  = useCornerstone.getState();
+    cornerstone.clearFiles();
     const studyRes = await http.get(`/dicom/studies/${studyInsUid}`);
     const seriesInsUid = studyRes.data.map((item: { seriesInsUid: string; }) => item.seriesInsUid);
 

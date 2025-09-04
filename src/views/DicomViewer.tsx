@@ -1,5 +1,5 @@
 // src/views/DicomViewer.tsx
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useViewportMount } from "../hooks/useViewportMount";
 import BottomBar from "../components/BottomBar";
@@ -35,7 +35,7 @@ export default function DicomViewer({ mode = "stack" }: Props) {
 
   // ✅ 네비게이션으로 들어온 payload
   const pendingFiles = state?.dicomFiles || null;
-  const filesBySeries = state?.filesBySeries || null;
+  const [localFilesBySeries] = useState<(File|Blob)[][] | null>(() => state?.filesBySeries ?? null);
 
   useEffect(() => {
     if (!isReady || !pendingFiles?.length) return;
@@ -62,7 +62,7 @@ export default function DicomViewer({ mode = "stack" }: Props) {
         />
         <RightPane>
           {/* ✅ filesBySeries가 있으면 로컬 파일 모드로 썸네일/선택 */}
-          <SeriesSidebar onSelect={loadStack} filesBySeries={filesBySeries ?? undefined} />
+          <SeriesSidebar onSelect={loadStack} filesBySeries={localFilesBySeries ?? undefined} />
         </RightPane>
       </Container>
     </Wrapper>
