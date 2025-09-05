@@ -65,6 +65,7 @@ type AdminState = {
   updateUser: (userId: string, role: UserRole, displayName: string, dept: string, status:UserStatus ) => Promise<void>;
   toggleUserActive: (userId: string, next: UserStatus) => Promise<void>;
   resetPassword: (userId: string) => Promise<{ tempPassword: string } | null>;
+  deleteUser: (email: string) => Promise<void>;
 };
 
 export const useAdminStore = create<AdminState>((set, get) => ({
@@ -127,6 +128,14 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     } catch (e) {
       console.error('[updateUser] failed', e)
       set({ users: prev }) // rollback
+    }
+  },
+
+  deleteUser: async (email: string) => {
+    try{
+      await http.delete(`/users/${email}/hard`)
+    } catch (e) {
+      console.error('[UserDelete Fail]',e)
     }
   },
 

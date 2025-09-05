@@ -2,6 +2,7 @@
 import React from 'react'
 import styled from '@emotion/styled'
 import { useAdminStore, type LogLevel } from '../stores/useAdminStore'
+import { useLogStore } from '../stores/useLogStore'
 
 const Card = styled.div`
   background: linear-gradient(180deg,#0d1520,#0a0f16);
@@ -64,20 +65,20 @@ const Table = styled.table`
 `
 
 export default function LogsView(){
-  const { logs, totalLogs, isLoadingLogs, fetchLogs } = useAdminStore()
+  const {totalLogs, isLoadingLogs} = useAdminStore()
   const [keyword, setKeyword] = React.useState('')
   const [level, setLevel] = React.useState<LogLevel | 'ALL'>('ALL')
   const [dateFrom, setDateFrom] = React.useState('')
   const [dateTo, setDateTo] = React.useState('')
+  const { Logs, getLogs } = useLogStore();
 
-  React.useEffect(() => { fetchLogs({ page: 1 }) }, [])
-  const onSearch = () => fetchLogs({ page: 1, keyword, level, dateFrom, dateTo })
+  React.useEffect(() => { getLogs() }, [])
 
   return (
     <Card>
       <Row>
         <div>총 {totalLogs}건</div>
-        <div><Btn onClick={() => fetchLogs()} disabled={isLoadingLogs}>새로고침</Btn></div>
+        <div><Btn onClick={() => getLogs()} disabled={isLoadingLogs}>새로고침</Btn></div>
       </Row>
 
       <Controls>
@@ -91,7 +92,7 @@ export default function LogsView(){
         <Input type="date" value={dateFrom} onChange={e=>setDateFrom(e.target.value)} />
         <Input type="text" placeholder="키워드(메시지/행위자/IP)" value={keyword} onChange={e=>setKeyword(e.target.value)} />
         <Input type="date" value={dateTo} onChange={e=>setDateTo(e.target.value)} />
-        <Btn onClick={onSearch} disabled={isLoadingLogs}>검색</Btn>
+        <Btn disabled={isLoadingLogs}>검색</Btn>
       </Controls>
 
       <div style={{maxHeight: '62vh', overflow: 'auto'}}>
@@ -99,30 +100,23 @@ export default function LogsView(){
           <thead>
             <tr>
               <th style={{width: 180}}>시간</th>
-              <th style={{width: 80}}>레벨</th>
-              <th style={{width: 160}}>행위자 / IP</th>
-              <th>메시지</th>
+              <th style={{width: 80}}>행위자</th>
+              <th style={{width: 160}}>대상자</th>
+              <th>액션</th>
             </tr>
           </thead>
           <tbody>
-            {logs.map(log => (
-              <tr key={log.id}>
-                <td><code>{new Date(log.time).toLocaleString()}</code></td>
+            {Logs.map((log, idx) => (
+              <tr key={idx}>
+                <td><code>{new Date(log.createdAt).toLocaleString()}</code></td>
+                <td>{log.actor || '-'}</td>
                 <td>
-                  <span style={{
-                    display:'inline-block', padding:'2px 8px', borderRadius:8,
-                    background: log.level==='ERROR' ? '#3a1020' : log.level==='WARN' ? '#35240e' : log.level==='DEBUG' ? '#10283a' : '#102034',
-                    border: '1px solid #223a5a'
-                  }}>{log.level}</span>
+                  <div>{log.target}</div>
                 </td>
-                <td>{log.actor || '-'}{log.ip ? ` / ${log.ip}` : ''}</td>
-                <td>
-                  <div>{log.message}</div>
-                  {log.meta && <details><summary>meta</summary><pre style={{whiteSpace:'pre-wrap'}}>{JSON.stringify(log.meta,null,2)}</pre></details>}
-                </td>
+                <td>{log.logAction}</td>
               </tr>
             ))}
-            {!logs.length && (
+            {!Logs.length && (
               <tr><td colSpan={4} style={{opacity:.7, padding:20}}>표시할 로그가 없습니다.</td></tr>
             )}
           </tbody>

@@ -1,3 +1,4 @@
+import ReportPanel from "../components/ReportPanel";
 import StudyList from "../components/StudyList";
 import styled from "@emotion/styled";
 

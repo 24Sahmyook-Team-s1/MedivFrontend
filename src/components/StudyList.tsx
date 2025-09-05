@@ -12,6 +12,7 @@ import CustomInput from "./Common/InputArea";
 import { useStudyStore } from "../stores/useStudyStore";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/useAuth";
+import ReportPanel from "./ReportPanel";
 
 // ============== Styled ==============
 const Container = styled.div`
@@ -21,6 +22,7 @@ const Container = styled.div`
   background: #121212;
   color: #f5f5f5;
   min-width: 99vw;
+  max-height: 100%;
 `;
 
 const Sidebar = styled.aside`
@@ -320,6 +322,9 @@ const handleStudyClick = async (studyInsUid: string) => { await getDicomImage(st
               )}
             </Table>
           </div>
+        </Section>
+        <Section>
+          <ReportPanel studyKey={13} />
         </Section>
       </Main>
     </Container>
