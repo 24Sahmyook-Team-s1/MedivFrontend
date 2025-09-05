@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 // src/components/SeriesSideBar.tsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import styled from "@emotion/styled";
 import { useStudyStore } from "../stores/useStudyStore";
 import { ensureCornerstoneReady } from "../lib/cornerstone";
@@ -13,6 +13,8 @@ type Props = {
   // ✅ 로컬 파일 모드: 시리즈별 파일 묶음 (없으면 서버 모드로 동작)
   filesBySeries?: (File | Blob)[][];
 };
+
+const thumbCache = new Map<string, string>();
 
 const Grid = styled.div`
   display: grid;
@@ -49,6 +51,7 @@ export default function SeriesSidebar({ onSelect, filesBySeries }: Props) {
   const [active, setActive] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
+  const jobIdRef = useRef(0);
 
   // ✅ 로컬/서버 모드 분기
   const isLocalMode = !!filesBySeries?.length;
@@ -65,69 +68,82 @@ export default function SeriesSidebar({ onSelect, filesBySeries }: Props) {
     }
     return out;
   }, [StudyList, isLocalMode]);
+  
+  // ✅ 의존성 안정화: “길이/uid”만으로 키 생성 → 잦은 재실행 방지
+  const depsKey = useMemo(() => {
+    if (isLocalMode) {
+      const len = filesBySeries?.length ?? 0;
+      const per = (filesBySeries ?? []).map(arr => Array.isArray(arr) ? arr.length : 0).join(",");
+      return `local:${len}:${per}`;
+    }
+    return `server:${serverSeries.map(s => s.uid).join(",")}`;
+  }, [isLocalMode, filesBySeries, serverSeries]);
 
   useEffect(() => {
-    let stop = false;
+    const myJob = jobIdRef.current;
     (async () => {
-      setItems([]);
       await ensureCornerstoneReady();
       if (isLocalMode) {
         // ===== 로컬 모드: filesBySeries 기반으로 썸네일/카운트 구성 =====
         if (!filesBySeries?.length) return;
         setLoading(true);
         try {
-          const next: Item[] = [];
-          for (let i = 0; i < filesBySeries.length; i++) {
-            const files = filesBySeries[i] ?? [];
-            const imageIds = createImageIdsFromFiles(files as File[]); // Cornerstone 권장
-            let thumb: string | undefined = undefined;
-            try {
+          const tasks = (filesBySeries ?? []).map(async (files, i) => {
+            const key = `local-${i}`;
+            let thumb = thumbCache.get(key);
+            if (!thumb) {
+              const imageIds = createImageIdsFromFiles((files ?? []) as File[]);
               if (imageIds[0]) {
-                thumb = await imageIdToThumbDataURL(imageIds[0], 160);
+                try { thumb = await imageIdToThumbDataURL(imageIds[0], 160); } catch {}
+                if (thumb) thumbCache.set(key, thumb);
               }
-            } catch {}
-            if (stop) return;
-            next.push({
-              key: `local-${i}`,
+            }
+            return {
+              key,
               number: i + 1,
               desc: `Local Series ${i + 1}`,
-              count: imageIds.length,
+              count: (files ?? []).length,
               thumb,
-            });
-          }
-          if (!stop) setItems(next);
+            } as Item;
+          });
+          const settled = await Promise.allSettled(tasks);
+          if (jobIdRef.current !== myJob) return; // 최신 잡만 반영
+          const next = settled.map(r => r.status === "fulfilled" ? r.value : undefined).filter(Boolean) as Item[];
+          setItems(next);
         } finally {
-          if (!stop) setLoading(false);
+          if (jobIdRef.current === myJob) setLoading(false);
         }
       } else {
         // ===== 서버 모드: 기존 로직 유지 =====
         if (!serverSeries.length) return;
         setLoading(true);
         try {
-          const next: Item[] = [];
-          for (const s of serverSeries) {
+          const tasks = serverSeries.map(async (s) => {
+            const key = s.uid;
+            let thumb = thumbCache.get(key);
+            let count: number | undefined = undefined;
             try {
               const urls = await fetchInstanceUrls(s.uid);
-              let thumb: string | undefined = undefined;
-              if (urls?.length) {
-                // 서버 모드에서는 wadouri 변환 유틸을 내부에서 사용(thumb.ts 참조)
-                const imageId = urls[0].startsWith("wadouri:") ? urls[0] : `wadouri:${urls[0]}`;
-                thumb = await imageIdToThumbDataURL(imageId, 160);
+              count = urls?.length ?? 0;
+              if (!thumb && urls?.length) {
+                const first = urls[0]?.startsWith("wadouri:") ? urls[0] : `wadouri:${urls[0]}`;
+                try { thumb = await imageIdToThumbDataURL(first, 160); } catch {}
+                if (thumb) thumbCache.set(key, thumb);
               }
-              if (stop) return;
-              next.push({ key: s.uid, number: s.number, desc: s.desc, count: urls?.length, thumb });
-            } catch {
-              next.push({ key: s.uid, number: s.number, desc: s.desc });
-            }
-          }
-          if (!stop) setItems(next);
+            } catch { /* ignore per-series fetch error */ }
+            return { key, number: s.number, desc: s.desc, count, thumb } as Item;
+          });
+          const settled = await Promise.allSettled(tasks);
+          if (jobIdRef.current !== myJob) return;
+          const next = settled.map(r => r.status === "fulfilled" ? r.value : undefined).filter(Boolean) as Item[];
+          setItems(next);
         } finally {
-          if (!stop) setLoading(false);
+          if (jobIdRef.current === myJob) setLoading(false);
         }
       }
     })();
-    return () => { stop = true; };
-  }, [filesBySeries, serverSeries, isLocalMode ]);
+        return () => { /* 최신 잡만 반영할 것이므로 별도 stop 불필요 */ };
+  }, [depsKey, isLocalMode]);
 
   const handleClick = async (key: string) => {
     setActive(key);

@@ -9,7 +9,10 @@ import {
 // 타입(런타임에 제거됨)
 import type { Types as CoreTypes } from "@cornerstonejs/core";
 import { ToolGroupManager } from "@cornerstonejs/tools";
-import { ensureCornerstoneReady } from "../lib/cornerstone";
+import {
+  ensureCornerstoneReady,
+  createDefaultToolGroup,
+} from "../lib/cornerstone";
 import { useViewportLayout } from "../stores/useViewportLayout";
 
 const ENGINE_ID = "cs3d-engine";
@@ -30,6 +33,7 @@ export function useMultiStackViewports(
   const toolGroupRef = useRef<ReturnType<
     typeof ToolGroupManager.createToolGroup
   > | null>(null);
+  const lastImageIdsRef = useRef<string[] | null>(null);
 
   // 현재 레이아웃에서 사용할 viewport 정의
   const viewDefs = useMemo(() => {
@@ -84,12 +88,28 @@ export function useMultiStackViewports(
       );
 
       engine.setViewports(viewports);
-      await new Promise(requestAnimationFrame); // ✅ DOM 레이아웃 1프레임 대기 
+      await new Promise(requestAnimationFrame); // ✅ DOM 레이아웃 1프레임 대기
       engine.resize();
 
       // ToolGroup에 현재 레이아웃 뷰포트 등록 (중복 등록 자동 무시)
       for (const { viewportId } of viewDefs) {
-        tg?.addViewport(viewportId, ENGINE_ID);
+        // stack 모드 기준 바인딩 (좌:WL / 중:Pan / 우:Zoom / 휠:StackScroll)
+        createDefaultToolGroup(viewportId, ENGINE_ID, "stack");
+        // 브라우저 우클릭 메뉴가 Secondary 바인딩을 가로채지 않도록 차단
+        const vp = engine.getViewport(viewportId) as any;
+        const el = vp?.element as HTMLDivElement | undefined;
+        if (el) el.oncontextmenu = (e) => e.preventDefault();
+      }
+      // 🔁 방금 구성한 뷰포트에 마지막 이미지 스택을 다시 적용
+      if (lastImageIdsRef.current?.length) {
+        for (const { viewportId } of viewDefs) {
+          const vp = engine.getViewport(viewportId);
+          if (vp?.type === Enums.ViewportType.STACK) {
+            // @ts-ignore
+            await (vp as any).setStack(lastImageIdsRef.current);
+            vp.render();
+          }
+        }
       }
 
       if (!disposed) setReady(true);
@@ -109,6 +129,7 @@ export function useMultiStackViewports(
   ) {
     const engine = engineRef.current;
     if (!engine) return;
+    lastImageIdsRef.current = imageIds;
 
     const targets = (
       opts?.all

@@ -1,5 +1,5 @@
 // src/views/DicomViewer.tsx
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styled from "@emotion/styled";
 import BottomBar from "../components/BottomBar";
 import SeriesSideBar from "../components/SeriesSideBar";
@@ -7,6 +7,7 @@ import { createImageIdsFromFiles } from "../lib/cornerstone";
 import { useViewportLayout } from "../stores/useViewportLayout";
 import { useMultiStackViewports } from "../hooks/useMulitStackViewPorts";
 import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 
 // ✅ state 타입 확장: filesBySeries 수신
 type ViewerLocationState = {
@@ -20,6 +21,34 @@ const Wrapper = styled.div`
   display: grid;
   grid-template-rows: auto 1fr;
   height: 100%;
+`;
+
+// 🔙 상단 헤더 & 뒤로가기 버튼
+const Header = styled.header`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #0d1520;
+  border-bottom: 1px solid #1b2a42;
+`;
+const BackBtn = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0a111a;
+  border: 1px solid #1a2b45;
+  color: #d7e7fb;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  &:hover {
+    background: #0d1520;
+    border-color: #27405f;
+  }
 `;
 const Container = styled.div`
   display: grid;
@@ -70,17 +99,28 @@ export default function DicomViewer({ mode = "stack" }: Props) {
   //Location Patch
   const location = useLocation();
   const navigate = useNavigate();
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate("/Studies");
+  };
   const state = (location.state as ViewerLocationState) || null;
   const pendingFiles = state?.dicomFiles || null;
-  const filesBySeries = state?.filesBySeries || null;
+  const filesBySeriesFromURL = state?.filesBySeries || null;
+  // 🧷 URL state → 로컬 state로 영구 보관
+  const [filesBySeries, setFilesBySeries] = useState<(File | Blob)[][] | null>(
+    null
+  );
+  useEffect(() => {
+    if (filesBySeriesFromURL && !filesBySeries)
+      setFilesBySeries(filesBySeriesFromURL);
+  }, [filesBySeriesFromURL, filesBySeries]);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const vpRefs = [
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
-  ];
+  const vpRef1 = useRef<HTMLDivElement>(null);
+  const vpRef2 = useRef<HTMLDivElement>(null);
+  const vpRef3 = useRef<HTMLDivElement>(null);
+  const vpRef4 = useRef<HTMLDivElement>(null);
+  const vpRefs = useMemo(() => [vpRef1, vpRef2, vpRef3, vpRef4], []);
   const { layout, setLayout, activeViewportId, setActiveViewport } =
     useViewportLayout() as any;
 
@@ -96,7 +136,7 @@ export default function DicomViewer({ mode = "stack" }: Props) {
     const imageIds = createImageIdsFromFiles(pendingFiles as File[]);
     (async () => {
       await loadStack(imageIds, { target: activeViewportId || "STACK-1" });
-      navigate(location.pathname, { replace: true, state: null }); // URL state 정리
+      navigate(location.pathname, { replace: true, state: null });
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReady, pendingFiles]);
@@ -130,6 +170,10 @@ export default function DicomViewer({ mode = "stack" }: Props) {
           2×2
         </button>
         {/* 필요하면 "모든 뷰포트에 로드" 토글도 가능 */}
+        <BackBtn onClick={goBack} aria-label="뒤로가기">
+          <ArrowLeft size={16} />
+          뒤로가기
+        </BackBtn>
       </TopBar>
 
       <Container>
